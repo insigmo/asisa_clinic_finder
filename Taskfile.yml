@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  GREETING: Hello, world!
+
+tasks:
+  migrate:
+    desc: Up migrations from ./migrations
+    cmd: "goose -dir migrations sqlite3 db/local.db up"

@@ -1,5 +1,10 @@
 package clinic
 
+import (
+	"slices"
+	"strings"
+)
+
 const maxDist = 3
 
 func levenshtein(a, b string, maxDist int) int {
@@ -83,12 +88,23 @@ func levenshtein(a, b string, maxDist int) int {
 
 func FindSimilar(query string, dict []string) []string {
 	var result []string
+	dict = Map[string, string](dict, func(s string) string {
+		return strings.ToLower(s)
+	})
 
 	for _, word := range dict {
 		if levenshtein(query, word, maxDist) <= maxDist {
 			result = append(result, word)
 		}
 	}
+	result = slices.Compact(result)
+	return result
+}
 
+func Map[T, V any](ts []T, fn func(T) V) []V {
+	result := make([]V, len(ts))
+	for i, t := range ts {
+		result[i] = fn(t)
+	}
 	return result
 }

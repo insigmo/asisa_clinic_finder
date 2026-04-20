@@ -8,6 +8,13 @@ import (
 	"go.uber.org/zap"
 )
 
+type ctxKey int
+
+const (
+	LoggerKey ctxKey = iota
+	DBManagerKey
+)
+
 type BaseParams struct {
 	Ctx    context.Context
 	TgBot  *bot.Bot
@@ -17,7 +24,7 @@ type BaseParams struct {
 }
 
 func NewBaseParams(ctx context.Context, tgBot *bot.Bot, update *models.Update) *BaseParams {
-	log, _ := ctx.Value("logger").(*zap.Logger)
+	log, _ := ctx.Value(LoggerKey).(*zap.Logger)
 	if log == nil {
 		log = zap.NewNop()
 	}
@@ -50,5 +57,5 @@ type Province struct {
 }
 
 type Place struct {
-	PlaceId string `json:"placeId"`
+	PlaceID string `json:"placeId"`
 }

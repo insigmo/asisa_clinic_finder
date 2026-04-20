@@ -3,49 +3,37 @@ package clinic
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 )
 
 type DirectionValidator struct {
-	dbManager  *db.Manager
-	ctx        context.Context
-	cancelFunc context.CancelFunc
+	dbManager *db.Manager
 }
 
 func NewDirectionValidator(dbManager *db.Manager) *DirectionValidator {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
-	return &DirectionValidator{
-		dbManager:  dbManager,
-		ctx:        ctx,
-		cancelFunc: cancelFunc,
-	}
+	return &DirectionValidator{dbManager: dbManager}
 }
 
-func (d *DirectionValidator) TakeCity(userID int64) (string, error) {
-	user, err := d.dbManager.GetUser(d.ctx, userID)
+func (d *DirectionValidator) TakeCity(ctx context.Context, userID int64) (string, error) {
+	user, err := d.dbManager.GetUser(ctx, userID)
 	if err != nil || user == nil {
-		return "", fmt.Errorf("user %d not found: %v", userID, err)
+		return "", fmt.Errorf("user %d not found: %w", userID, err)
 	}
-
 	return user.City, nil
 }
 
-func (d *DirectionValidator) ValidateDirection(direction string) error {
-	_, err := d.dbManager.FindMedicalDirection(direction)
-	if err != nil {
-		return fmt.Errorf("direction not found: %v", err)
+func (d *DirectionValidator) ValidateDirection(ctx context.Context, direction string) error {
+	if _, err := d.dbManager.FindMedicalDirection(ctx, direction); err != nil {
+		return fmt.Errorf("direction not found: %w", err)
 	}
 	return nil
 }
 
-func (d *DirectionValidator) FindSimilarDirections(direction string) ([]string, error) {
-	allDirections, err := d.dbManager.GetAllMedicalDirections()
+func (d *DirectionValidator) FindSimilarDirections(ctx context.Context, direction string) ([]string, error) {
+	allDirections, err := d.dbManager.GetAllMedicalDirections(ctx)
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
-	similarDirections := FindSimilar(direction, allDirections)
-
-	return similarDirections, nil
+	return FindSimilar(direction, allDirections), nil
 }

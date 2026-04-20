@@ -10,6 +10,7 @@ import (
 
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/handlers"
+	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
 	"github.com/insigmo/asisa_clinic_finder/internal/logger"
 	"github.com/insigmo/asisa_clinic_finder/internal/middlewares"
 )
@@ -20,17 +21,26 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	token := os.Getenv("BOT_TOKEN")
+	if token == "" {
+		token = BotToken
+	}
+
 	log, err := logger.ConfigureLogger()
 	if err != nil {
 		panic(err)
 	}
-
-	defer log.Sync()
+	defer func() { _ = log.Sync() }()
 
 	log.Info("Starting tg bot")
 
-	ctx = context.WithValue(ctx, "logger", log)
-	dbManager := db.New(ctx)
+	ctx = context.WithValue(ctx, local_models.LoggerKey, log)
+
+	dbManager, err := db.New(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to connect to db: %w", err))
+	}
+	defer func() { _ = dbManager.Close() }()
 
 	opts := []bot.Option{
 		bot.WithMiddlewares(middlewares.DBMiddleware(dbManager)),
@@ -40,7 +50,7 @@ func main() {
 		bot.WithDefaultHandler(handlers.Default),
 	}
 
-	tgBot, err := bot.New(BotToken, opts...)
+	tgBot, err := bot.New(token, opts...)
 	if err != nil {
 		panic(fmt.Errorf("failed to create telegram bot: %w", err))
 	}

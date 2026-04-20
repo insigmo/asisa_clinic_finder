@@ -1,11 +1,18 @@
 package helpers
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
 
-type HttpManager struct {
+const defaultTimeout = 10 * time.Second
+
+type HTTPManager struct {
 	client *http.Client
 }
 
-func NewHttpManager() *HttpManager {
-	return &HttpManager{client: &http.Client{}}
+func NewHTTPManager() *HTTPManager {
+	return &HTTPManager{
+		client: &http.Client{Timeout: defaultTimeout},
+	}
 }

@@ -39,8 +39,8 @@ func saveDirections() {
 	insertInTx(
 		`INSERT INTO medical_direction (reference_name, name) VALUES (?, ?)`,
 		func(exec func(args ...any)) {
-			for reference_name, name := range data {
-				exec(reference_name, name)
+			for referenceName, name := range data {
+				exec(referenceName, name)
 			}
 		},
 	)
@@ -52,7 +52,7 @@ func readJSON[T any](path string) T {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var data T
 	if err = json.NewDecoder(f).Decode(&data); err != nil {
@@ -67,7 +67,7 @@ func insertInTx(query string, feed func(exec func(args ...any))) {
 	if err != nil {
 		panic(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	tx, err := client.Begin()
 	if err != nil {
@@ -78,7 +78,7 @@ func insertInTx(query string, feed func(exec func(args ...any))) {
 	if err != nil {
 		panic(err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	exec := func(args ...any) {
 		if _, err := stmt.Exec(args...); err != nil {

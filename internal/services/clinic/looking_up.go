@@ -1,6 +1,7 @@
 package clinic
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -9,44 +10,78 @@ import (
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
 )
 
-func Search(city, direction string, postalCode int) string {
-	client := helpers.NewHttpManager()
+func Search(ctx context.Context, city, direction string, postalCode int) (string, error) {
+	client := helpers.NewHTTPManager()
 
-	places, err := client.FetchPlaces(city)
+	places, err := client.FetchPlaces(ctx, city)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("fetch places: %w", err)
 	}
 	if len(places) == 0 {
-		panic(fmt.Errorf("town '%s' not found", city))
+		return "", fmt.Errorf("town %q not found", city)
 	}
 
-	provinceID, err := client.FetchProvinceID(places[0].PlaceId)
+	provinceID, err := client.FetchProvinceID(ctx, places[0].PlaceID)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("fetch province id: %w", err)
 	}
 
-	data, err := client.FetchClinics(provinceID, direction)
+	data, err := client.FetchClinics(ctx, provinceID, direction)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("fetch clinics: %w", err)
 	}
 
-	clinics, err := client.ParseHtml(data, direction)
+	clinics, err := client.ParseHTML(data, direction)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("parse html: %w", err)
 	}
 	sortClinics(clinics, postalCode)
-	return prepareResult(clinics)
+	return prepareResult(clinics), nil
+}
+
+func escapeMarkdownV2(text string) string {
+	var builder strings.Builder
+	builder.Grow(len(text) + len(text)/10) // небольшой запас
+
+	for _, r := range text {
+		switch r {
+		case '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!':
+			builder.WriteRune('\\')
+		}
+		builder.WriteRune(r)
+	}
+
+	return builder.String()
 }
 
 func prepareResult(clinics []local_models.Clinic) string {
+	if len(clinics) == 0 {
+		return "_No clinics found_"
+	}
+
 	var builder strings.Builder
 
-	for _, clinic := range clinics {
-		builder.WriteString(clinic.Direction + "\n")
-		builder.WriteString(clinic.Name + "\n")
-		builder.WriteString(clinic.Address + "\n")
-		builder.WriteString(clinic.PhoneNumber + "\n")
-		builder.WriteString(fmt.Sprintf("%d\n", clinic.PostalCode))
+	// "Заголовок" — жирный текст + эмодзи (настоящих заголовков в Telegram нет)
+	direction := escapeMarkdownV2(strings.ToTitle(strings.ToLower(clinics[0].Direction)))
+	builder.WriteString("🏥 *")
+	builder.WriteString(direction)
+	builder.WriteString("*\n")
+	builder.WriteString(fmt.Sprintf("_Found %d clinic\\(s\\)_\n\n", len(clinics)))
+
+	for i, c := range clinics {
+		// Номер + название клиники жирным
+		name := escapeMarkdownV2(strings.ToTitle(strings.ToLower(c.Name)))
+		builder.WriteString(fmt.Sprintf("*%d\\. %s*\n", i+1, name))
+
+		address := escapeMarkdownV2(strings.ToTitle(strings.ToLower(c.Address)))
+		builder.WriteString(fmt.Sprintf("📍 %s\n", address))
+		builder.WriteString(fmt.Sprintf("📞 `+34%s`\n", c.PhoneNumber))
+		builder.WriteString(fmt.Sprintf("🏷️ `%d`\n", c.PostalCode))
+
+		if c.Distance > 0 {
+			builder.WriteString(fmt.Sprintf("📏 %d m\n", c.Distance))
+		}
+
 		builder.WriteString("\n")
 	}
 
@@ -54,16 +89,13 @@ func prepareResult(clinics []local_models.Clinic) string {
 }
 
 func sortClinics(clinics []local_models.Clinic, postalCode int) {
+	abs := func(x int) int {
+		if x < 0 {
+			return -x
+		}
+		return x
+	}
 	sort.Slice(clinics, func(i, j int) bool {
-		first := clinics[i].PostalCode - postalCode
-		if first < 0 {
-			first = -first
-		}
-		second := clinics[j].PostalCode - postalCode
-		if second < 0 {
-			second = -second
-		}
-
-		return first < second
+		return abs(clinics[i].PostalCode-postalCode) < abs(clinics[j].PostalCode-postalCode)
 	})
 }

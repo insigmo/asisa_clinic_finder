@@ -11,7 +11,7 @@ import (
 	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
 )
 
-var MinLanguageCodeLen = 2
+const MinLanguageCodeLen = 2
 
 func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
 	if len(args) == 0 {
@@ -19,7 +19,7 @@ func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
 	}
 
 	params, ok := args[0].(*local_models.BaseParams)
-	if !ok || params == nil || params.Update == nil || params.Update.Message == nil || params.Update.Message.From == nil {
+	if !ok {
 		return
 	}
 

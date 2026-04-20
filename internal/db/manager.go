@@ -15,21 +15,22 @@ const (
 
 type Manager struct {
 	client *sql.DB
-	ctx    context.Context
 }
 
-func New(ctx context.Context) *Manager {
+func New(ctx context.Context) (*Manager, error) {
 	client, err := sql.Open(dbName, dbFileName)
 	if err != nil {
-		panic(fmt.Errorf("cannot create db file %s. error: %v", dbFileName, err))
+		return nil, fmt.Errorf("cannot open db file %s: %w", dbFileName, err)
 	}
 
 	if err = client.PingContext(ctx); err != nil {
-		panic(fmt.Errorf("cannot connect to db file %s. error: %v", dbFileName, err))
+		_ = client.Close()
+		return nil, fmt.Errorf("cannot connect to db file %s: %w", dbFileName, err)
 	}
 
-	return &Manager{
-		client: client,
-		ctx:    ctx,
-	}
+	return &Manager{client: client}, nil
+}
+
+func (db *Manager) Close() error {
+	return db.client.Close()
 }

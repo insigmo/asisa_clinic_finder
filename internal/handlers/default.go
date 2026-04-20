@@ -16,11 +16,10 @@ import (
 func Default(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	text := strings.TrimSpace(update.Message.Text)
 	params := local_models.NewBaseParams(ctx, tgBot, update)
-	dbManager, ok := ctx.Value("dbManager").(*db.Manager)
+	dbManager, ok := ctx.Value(local_models.DBManagerKey).(*db.Manager)
 
 	if !ok {
 		params.Log.Error("db manager not found in context")
-
 		return
 	}
 

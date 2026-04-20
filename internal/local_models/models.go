@@ -17,13 +17,38 @@ type BaseParams struct {
 }
 
 func NewBaseParams(ctx context.Context, tgBot *bot.Bot, update *models.Update) *BaseParams {
-	log := ctx.Value("logger").(*zap.Logger)
+	log, _ := ctx.Value("logger").(*zap.Logger)
+	if log == nil {
+		log = zap.NewNop()
+	}
+
+	var userID int64
+	if update != nil && update.Message != nil {
+		userID = update.Message.Chat.ID
+	}
 
 	return &BaseParams{
 		Ctx:    ctx,
 		TgBot:  tgBot,
 		Update: update,
 		Log:    log,
-		UserID: update.Message.Chat.ID,
+		UserID: userID,
 	}
+}
+
+type Clinic struct {
+	Name        string
+	Direction   string
+	Address     string
+	Distance    int
+	PhoneNumber string
+	PostalCode  int
+}
+
+type Province struct {
+	ProvinceID int `json:"province"`
+}
+
+type Place struct {
+	PlaceId string `json:"placeId"`
 }

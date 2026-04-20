@@ -1,45 +1,60 @@
 package fsm_states
 
 import (
-	"fmt"
-	"log"
+	"strings"
 
 	"github.com/go-telegram/fsm"
+
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
 	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
 )
 
-func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
-	params := args[0].(*local_models.BaseParams)
-	localizer := localize_manager.New(params.Update.Message.From.LanguageCode)
+var MinLanguageCodeLen = 2
 
-	err := helpers.SendMessage(params, localizer.StartMessage())
-	if err != nil {
-		log.Fatal(fmt.Sprintf("error in start callback %v", err))
+func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
+	if len(args) == 0 {
+		return
 	}
 
-	s.FSM.Transition(params.UserID, StateChangeCity)
+	params, ok := args[0].(*local_models.BaseParams)
+	if !ok || params == nil || params.Update == nil || params.Update.Message == nil || params.Update.Message.From == nil {
+		return
+	}
+
+	localizer := localize_manager.New(params.Update.Message.From.LanguageCode)
+	if err := helpers.SendMessage(params, localizer.StartMessage()); err != nil {
+		params.Log.Error(err.Error())
+		return
+	}
+
+	s.FSM.Transition(params.UserID, StateChangeCity, params)
 }
 
 func (s *StateMachine) CallbackChangeCity(_ *fsm.FSM, args ...any) {
-	params := args[0].(*local_models.BaseParams)
-	localizer := localize_manager.New(params.Update.Message.From.LanguageCode)
-
-	err := helpers.SendMessage(params, localizer.StartMessage())
-	if err != nil {
-		log.Fatal(fmt.Sprintf("error in start callback %v", err))
+	if len(args) == 0 {
+		return
 	}
 
-	dbManager := params.Ctx.Value("dbManager").(*db.Manager)
+	params, _ := args[0].(*local_models.BaseParams)
+	dbManager, ok := params.Ctx.Value("dbManager").(*db.Manager)
+	if !ok {
+		params.Log.Error("db manager not found in context")
+
+		return
+	}
+
 	userInfo := params.Update.Message.From
+	city := strings.TrimSpace(params.Update.Message.Text)
 
-	// TODO add validate city
+	if len([]rune(city)) < MinLanguageCodeLen {
+		return
+	}
 
-	city := params.Update.Message.Text
 	user := &db.User{
-		ID:           params.UserID,
+		ID:           userInfo.ID,
+		Username:     userInfo.Username,
 		Name:         userInfo.FirstName,
 		Lastname:     userInfo.LastName,
 		IsBot:        userInfo.IsBot,
@@ -47,8 +62,14 @@ func (s *StateMachine) CallbackChangeCity(_ *fsm.FSM, args ...any) {
 		LanguageCode: userInfo.LanguageCode,
 	}
 
-	err = dbManager.InsertOrUpdateUser(params.Ctx, user)
-	if err != nil {
-		panic(err)
+	if err := dbManager.InsertOrUpdateUser(params.Ctx, user); err != nil {
+		params.Log.Error(err.Error())
+
+		return
+	}
+
+	localizer := localize_manager.New(userInfo.LanguageCode)
+	if err := helpers.SendMessage(params, localizer.SaveUserMessage()); err != nil {
+		params.Log.Error(err.Error())
 	}
 }

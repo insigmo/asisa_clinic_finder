@@ -18,8 +18,8 @@ func New() *StateMachine {
 	sm.FSM = fsm.New(
 		StateStart,
 		map[fsm.StateID]fsm.Callback{
-			"stateStart":      sm.CallbackStart,
-			"stateChangeCity": sm.CallbackChangeCity,
+			StateStart:      sm.CallbackStart,
+			StateChangeCity: sm.CallbackChangeCity,
 		},
 	)
 

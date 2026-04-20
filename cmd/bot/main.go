@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 
 	"github.com/go-telegram/bot"
+
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/handlers"
 	"github.com/insigmo/asisa_clinic_finder/internal/logger"
@@ -23,6 +25,8 @@ func main() {
 		panic(err)
 	}
 
+	defer log.Sync()
+
 	log.Info("Starting tg bot")
 
 	ctx = context.WithValue(ctx, "logger", log)
@@ -31,9 +35,15 @@ func main() {
 	opts := []bot.Option{
 		bot.WithMiddlewares(middlewares.DBMiddleware(dbManager)),
 		bot.WithMessageTextHandler("/start", bot.MatchTypeExact, handlers.Start),
-		bot.WithMessageTextHandler("/find_clinic", bot.MatchTypeExact, handlers.Start),
+		bot.WithMessageTextHandler("/change_city", bot.MatchTypeExact, handlers.ChangeCity),
+		bot.WithMessageTextHandler("/find_clinic", bot.MatchTypePrefix, handlers.FindClinic),
+		bot.WithDefaultHandler(handlers.Default),
 	}
 
-	tgBot, _ := bot.New(BotToken, opts...)
+	tgBot, err := bot.New(BotToken, opts...)
+	if err != nil {
+		panic(fmt.Errorf("failed to create telegram bot: %w", err))
+	}
+
 	tgBot.Start(ctx)
 }

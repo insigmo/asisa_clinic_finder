@@ -2,50 +2,47 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"strconv"
+	"strings"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+
+	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
+	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
 )
 
-func handleDefault(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	if update.Message == nil {
+func Default(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
+	text := strings.TrimSpace(update.Message.Text)
+	params := local_models.NewBaseParams(ctx, tgBot, update)
+	dbManager, ok := ctx.Value("dbManager").(*db.Manager)
+
+	if !ok {
+		params.Log.Error("db manager not found in context")
+
 		return
 	}
-	params := local_models.NewBaseParams(ctx, tgBot, update)
 
-	switch sm.FSM.Current(params.UserID) {
-	case StateStart:
-		helpers.SendMessage(params, "Send /form to start the form.")
+	userInfo := update.Message.From
+	user := &db.User{
+		ID:           userInfo.ID,
+		Username:     userInfo.Username,
+		Name:         userInfo.FirstName,
+		Lastname:     userInfo.LastName,
+		IsBot:        userInfo.IsBot,
+		City:         text,
+		LanguageCode: userInfo.LanguageCode,
+	}
 
-	case StateChangeCity:
-		name := update.Message.Text
-		if len([]rune(name)) < 2 {
-			helpers.SendMessage(params, "Name is too short, please enter at least 2 characters.")
-			return
-		}
+	if err := dbManager.InsertOrUpdateUser(ctx, user); err != nil {
+		params.Log.Error(err.Error())
 
-		app.f.Set(userID, keyName, name)
+		return
+	}
 
-		// onAskAge callback will prompt the user.
-		app.f.Transition(userID, stateAskAge, ctx, chatID)
-
-	case stateAskAge:
-		age, err := strconv.Atoi(update.Message.Text)
-		if err != nil || age < 18 || age > 100 {
-			send(ctx, b, chatID, "Please enter a valid age between 18 and 100.")
-			return
-		}
-
-		app.f.Set(userID, keyAge, update.Message.Text)
-
-		// onFinish callback will display the summary and reset the state.
-		app.f.Transition(userID, stateFinish, ctx, chatID, userID)
-
-	default:
-		fmt.Printf("unexpected state: %s\n", app.f.Current(userID))
+	localizer := localize_manager.New(userInfo.LanguageCode)
+	if err := helpers.SendMessage(params, localizer.SaveUserMessage()); err != nil {
+		params.Log.Error(err.Error())
 	}
 }

@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	dbFileName = "local.db"
+	dbFileName = "db/local.db"
 	dbName     = "sqlite3"
 )
 
@@ -21,7 +21,11 @@ type Manager struct {
 func New(ctx context.Context) *Manager {
 	client, err := sql.Open(dbName, dbFileName)
 	if err != nil {
-		panic(fmt.Errorf("cannot create db file %s. Error %v", dbFileName, err))
+		panic(fmt.Errorf("cannot create db file %s. error: %v", dbFileName, err))
+	}
+
+	if err = client.PingContext(ctx); err != nil {
+		panic(fmt.Errorf("cannot connect to db file %s. error: %v", dbFileName, err))
 	}
 
 	return &Manager{

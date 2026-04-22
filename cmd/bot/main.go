@@ -10,6 +10,7 @@ import (
 
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/handlers"
+	"github.com/insigmo/asisa_clinic_finder/internal/keyboards"
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
 	"github.com/insigmo/asisa_clinic_finder/internal/logger"
 	"github.com/insigmo/asisa_clinic_finder/internal/middlewares"
@@ -45,8 +46,19 @@ func main() {
 	opts := []bot.Option{
 		bot.WithMiddlewares(middlewares.DBMiddleware(dbManager)),
 		bot.WithMessageTextHandler("/start", bot.MatchTypeExact, handlers.Start),
-		bot.WithMessageTextHandler("/change_city", bot.MatchTypeExact, handlers.ChangeCity),
-		bot.WithMessageTextHandler("/find_clinic", bot.MatchTypePrefix, handlers.FindClinic),
+
+		bot.WithMessageTextHandler(keyboards.RuCommandFindClinic, bot.MatchTypePrefix, handlers.FindClinic),
+		bot.WithMessageTextHandler(keyboards.EsCommandFindClinic, bot.MatchTypePrefix, handlers.FindClinic),
+		bot.WithMessageTextHandler(keyboards.EnCommandFindClinic, bot.MatchTypePrefix, handlers.FindClinic),
+
+		bot.WithMessageTextHandler(keyboards.RuCommandChangeCity, bot.MatchTypeExact, handlers.ChangeCity),
+		bot.WithMessageTextHandler(keyboards.EsCommandChangeCity, bot.MatchTypeExact, handlers.ChangeCity),
+		bot.WithMessageTextHandler(keyboards.EnCommandChangeCity, bot.MatchTypeExact, handlers.ChangeCity),
+
+		bot.WithMessageTextHandler(keyboards.RuCommandChangeLanguage, bot.MatchTypeExact, handlers.ChangeLanguage),
+		bot.WithMessageTextHandler(keyboards.EsCommandChangeLanguage, bot.MatchTypeExact, handlers.ChangeLanguage),
+		bot.WithMessageTextHandler(keyboards.EnCommandChangeLanguage, bot.MatchTypeExact, handlers.ChangeLanguage),
+
 		bot.WithDefaultHandler(handlers.Default),
 	}
 

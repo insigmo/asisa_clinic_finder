@@ -47,9 +47,9 @@ func main() {
 		bot.WithMiddlewares(middlewares.DBMiddleware(dbManager)),
 		bot.WithMessageTextHandler("/start", bot.MatchTypeExact, handlers.Start),
 
-		bot.WithMessageTextHandler(keyboards.RuCommandFindClinic, bot.MatchTypePrefix, handlers.FindClinic),
-		bot.WithMessageTextHandler(keyboards.EsCommandFindClinic, bot.MatchTypePrefix, handlers.FindClinic),
-		bot.WithMessageTextHandler(keyboards.EnCommandFindClinic, bot.MatchTypePrefix, handlers.FindClinic),
+		bot.WithMessageTextHandler(keyboards.RuCommandFindClinic, bot.MatchTypePrefix, handlers.RequestClinicDirection),
+		bot.WithMessageTextHandler(keyboards.EsCommandFindClinic, bot.MatchTypePrefix, handlers.RequestClinicDirection),
+		bot.WithMessageTextHandler(keyboards.EnCommandFindClinic, bot.MatchTypePrefix, handlers.RequestClinicDirection),
 
 		bot.WithMessageTextHandler(keyboards.RuCommandChangeCity, bot.MatchTypeExact, handlers.ChangeCity),
 		bot.WithMessageTextHandler(keyboards.EsCommandChangeCity, bot.MatchTypeExact, handlers.ChangeCity),

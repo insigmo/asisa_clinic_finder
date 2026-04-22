@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS user (
     lastname text,
     is_bot bool,
     city text,
-    language_code text
+    language_code text,
+    state text DEFAULT ''
 );
 
 -- +goose Down

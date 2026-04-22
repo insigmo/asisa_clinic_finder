@@ -9,7 +9,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
-	"github.com/insigmo/asisa_clinic_finder/internal/db"
+	"github.com/insigmo/asisa_clinic_finder/internal/fsm_states"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
 	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
@@ -18,23 +18,36 @@ import (
 
 const findClinicTimeout = 15 * time.Second
 
+func RequestClinicDirection(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
+	params := local_models.NewBaseParams(ctx, tgBot, update)
+	dbManager := helpers.GetDbManager(params)
+	user := helpers.FetchUser(params, dbManager)
+
+	localizator := localize_manager.New(user.LanguageCode)
+
+	user.State = string(fsm_states.StateFindClinic)
+
+	if err := dbManager.InsertOrUpdateUser(ctx, user); err != nil {
+		params.Log.Error(err.Error())
+		return
+	}
+
+	if err := helpers.SendMessage(params, localizator.AskDirectionMessage()); err != nil {
+		params.Log.Error(err.Error())
+	}
+}
+
 func FindClinic(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	params := local_models.NewBaseParams(ctx, tgBot, update)
-	localizator := localize_manager.New(update.Message.From.LanguageCode)
+	dbManager := helpers.GetDbManager(params)
+	user := helpers.FetchUser(params, dbManager)
 
-	dbManager, ok := ctx.Value(local_models.DBManagerKey).(*db.Manager)
-	if !ok {
-		params.Log.Error("dbManager is not set to context")
+	localizator := localize_manager.New(user.LanguageCode)
+
+	direction := strings.TrimSpace(update.Message.Text)
+	if direction == "" {
 		return
 	}
-
-	// Всё после команды — это направление (может быть многословным).
-	raw := strings.TrimSpace(update.Message.Text)
-	parts := strings.SplitN(raw, " ", 2)
-	if len(parts) < 2 || strings.TrimSpace(parts[1]) == "" {
-		return
-	}
-	direction := strings.TrimSpace(parts[1])
 
 	opCtx, cancel := context.WithTimeout(ctx, findClinicTimeout)
 	defer cancel()
@@ -46,18 +59,25 @@ func FindClinic(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 			params.Log.Error(ferr.Error())
 			return
 		}
+
 		msg := localizator.WrongDirection()
 		if len(similar) > 0 {
 			msg += localizator.Perhaps() + strings.Join(similar, ", ")
 		}
+
 		if serr := helpers.SendMessage(params, msg); serr != nil {
 			params.Log.Error(serr.Error())
 		}
+
+		user.State = string(fsm_states.StateIdle)
+		if uerr := dbManager.InsertOrUpdateUser(ctx, user); uerr != nil {
+			params.Log.Error(uerr.Error())
+		}
+
 		return
 	}
 
-	userID := update.Message.Chat.ID
-	city, err := validator.TakeCity(opCtx, userID)
+	city, err := validator.TakeCity(opCtx, update.Message.Chat.ID)
 	if err != nil {
 		params.Log.Error(fmt.Sprintf("Failed when tried to get user: %v", err))
 		return
@@ -68,10 +88,17 @@ func FindClinic(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 		params.Log.Error(err.Error())
 		return
 	}
+
 	if len(postalCodes) == 0 {
 		if serr := helpers.SendMessage(params, localizator.WrongCityMessage()); serr != nil {
 			params.Log.Error(serr.Error())
 		}
+
+		user.State = string(fsm_states.StateIdle)
+		if uerr := dbManager.InsertOrUpdateUser(ctx, user); uerr != nil {
+			params.Log.Error(uerr.Error())
+		}
+
 		return
 	}
 
@@ -81,7 +108,14 @@ func FindClinic(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 		params.Log.Error(err.Error())
 		return
 	}
+
 	if err = helpers.SendMessage(params, result); err != nil {
+		params.Log.Error(err.Error())
+		return
+	}
+
+	user.State = string(fsm_states.StateIdle)
+	if err = dbManager.InsertOrUpdateUser(ctx, user); err != nil {
 		params.Log.Error(err.Error())
 	}
 }

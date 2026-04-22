@@ -6,6 +6,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
+	"github.com/insigmo/asisa_clinic_finder/internal/fsm_states"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
 	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
@@ -13,9 +14,24 @@ import (
 
 func ChangeCity(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	params := local_models.NewBaseParams(ctx, tgBot, update)
-	localizator := localize_manager.New(update.Message.From.LanguageCode)
+	dbManager := helpers.GetDbManager(params)
+	user := helpers.FetchUser(params, dbManager)
 
-	if err := helpers.SendMessage(params, localizator.StartMessage()); err != nil {
+	userInfo := update.Message.From
+	localizator := localize_manager.New(user.LanguageCode)
+
+	if user.LanguageCode == "" {
+		user.LanguageCode = userInfo.LanguageCode
+	}
+
+	user.State = string(fsm_states.StateChangeCity)
+
+	if err := dbManager.InsertOrUpdateUser(ctx, user); err != nil {
+		params.Log.Error(err.Error())
+		return
+	}
+
+	if err := helpers.SendMessage(params, localizator.ChangeCityMessage()); err != nil {
 		params.Log.Error(err.Error())
 	}
 }

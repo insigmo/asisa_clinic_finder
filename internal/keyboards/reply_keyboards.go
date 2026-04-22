@@ -3,6 +3,7 @@ package keyboards
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/go-telegram/bot"
@@ -43,7 +44,10 @@ type MenuTexts struct {
 	FindClinicHelpMessage  string
 }
 
-func menuTexts(languageCode string) MenuTexts {
+func menuTexts(languageCode string) (MenuTexts, error) {
+	if !slices.Contains([]string{"ru", "es", "en"}, languageCode) {
+		return MenuTexts{}, fmt.Errorf("unknown language: %s", languageCode)
+	}
 	switch normalizeLanguage(languageCode) {
 	case "ru":
 		return MenuTexts{
@@ -56,7 +60,7 @@ func menuTexts(languageCode string) MenuTexts {
 			UnknownMenuAction:      "Неизвестное действие меню.",
 			UnknownLanguageMessage: "Неизвестный язык.",
 			FindClinicHelpMessage:  "Используй команду: /find_clinic <медицинское направление>",
-		}
+		}, nil
 	case "es":
 		return MenuTexts{
 			Prompt:                 "Elige una acción:",
@@ -68,8 +72,8 @@ func menuTexts(languageCode string) MenuTexts {
 			UnknownMenuAction:      "Acción de menú desconocida.",
 			UnknownLanguageMessage: "Idioma desconocido.",
 			FindClinicHelpMessage:  "Usa el comando: /find_clinic <especialidad médica>",
-		}
-	default:
+		}, nil
+	case "en":
 		return MenuTexts{
 			Prompt:                 "Choose an action:",
 			FindClinicButton:       "Find clinic",
@@ -80,8 +84,9 @@ func menuTexts(languageCode string) MenuTexts {
 			UnknownMenuAction:      "Unknown menu action.",
 			UnknownLanguageMessage: "Unknown language.",
 			FindClinicHelpMessage:  "Use command: /find_clinic <medical direction>",
-		}
+		}, nil
 	}
+	return MenuTexts{}, nil
 }
 
 func normalizeLanguage(languageCode string) string {
@@ -96,28 +101,34 @@ func normalizeLanguage(languageCode string) string {
 	}
 }
 
-func resolveUserLanguage(ctx context.Context, update *models.Update) string {
-	if update != nil && update.Message != nil && update.Message.From != nil {
-		if languageCode := normalizeLanguage(update.Message.From.LanguageCode); languageCode != "" {
-			return languageCode
-		}
-	}
-
+func resolveUserLanguage(ctx context.Context, tgBot *bot.Bot, update *models.Update) string {
+	params := local_models.NewBaseParams(ctx, tgBot, update)
 	dbManager, ok := ctx.Value(local_models.DBManagerKey).(*db.Manager)
-	if !ok || update == nil || update.Message == nil {
-		return "en"
+	if !ok {
+		params.Log.Error("db manager not found in context")
+		return ""
 	}
 
 	user, err := dbManager.GetUser(ctx, update.Message.Chat.ID)
+
 	if err != nil || user == nil {
-		return "en"
+		params.Log.Error("user not found")
+		return ""
+	}
+	if user.LanguageCode == "" {
+		if languageCode := normalizeLanguage(update.Message.From.LanguageCode); languageCode != "" {
+			return languageCode
+		}
 	}
 
 	return normalizeLanguage(user.LanguageCode)
 }
 
 func BuildMainMenu(tgBot *bot.Bot, languageCode string) *reply.ReplyKeyboard {
-	texts := menuTexts(languageCode)
+	texts, err := menuTexts(languageCode)
+	if err != nil || texts.Prompt == "" {
+		return nil
+	}
 
 	return reply.New(
 		reply.WithPrefix("main_menu"),
@@ -142,10 +153,13 @@ func BuildLanguageMenu(tgBot *bot.Bot) *reply.ReplyKeyboard {
 }
 
 func SendMainMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update) error {
-	languageCode := resolveUserLanguage(ctx, update)
-	texts := menuTexts(languageCode)
+	languageCode := resolveUserLanguage(ctx, tgBot, update)
+	texts, err := menuTexts(languageCode)
+	if err != nil || texts.Prompt == "" {
+		return nil
+	}
 
-	_, err := tgBot.SendMessage(ctx, &bot.SendMessageParams{
+	_, err = tgBot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		Text:        texts.Prompt,
 		ReplyMarkup: BuildMainMenu(tgBot, languageCode),
@@ -158,10 +172,12 @@ func SendMainMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update) er
 }
 
 func SendLanguageMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update) error {
-	languageCode := resolveUserLanguage(ctx, update)
-	texts := menuTexts(languageCode)
-
-	_, err := tgBot.SendMessage(ctx, &bot.SendMessageParams{
+	languageCode := resolveUserLanguage(ctx, tgBot, update)
+	texts, err := menuTexts(languageCode)
+	if err != nil || texts.Prompt == "" {
+		return nil
+	}
+	_, err = tgBot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		Text:        texts.ChooseLanguagePrompt,
 		ReplyMarkup: BuildLanguageMenu(tgBot),
@@ -174,7 +190,10 @@ func SendLanguageMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update
 }
 
 func ResolveMainMenuAction(languageCode, text string) (string, bool) {
-	texts := menuTexts(languageCode)
+	texts, err := menuTexts(languageCode)
+	if err != nil || texts.Prompt == "" {
+		return "", false
+	}
 	value := strings.TrimSpace(text)
 
 	switch value {
@@ -202,19 +221,19 @@ func ResolveLanguage(text string) (string, bool) {
 	}
 }
 
-func FindClinicHelpMessage(languageCode string) string {
-	return menuTexts(languageCode).FindClinicHelpMessage
-}
-
 func HandleLanguageSelection(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	onLanguageSelect(ctx, tgBot, update)
 }
 
 func onMainMenuSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	languageCode := resolveUserLanguage(ctx, update)
+	languageCode := resolveUserLanguage(ctx, tgBot, update)
+	params := local_models.NewBaseParams(ctx, tgBot, update)
+
 	action, ok := ResolveMainMenuAction(languageCode, update.Message.Text)
 	if !ok {
-		texts := menuTexts(languageCode)
+		texts, err := menuTexts(languageCode)
+		if err != nil || texts.Prompt == "" {
+		}
 		_, _ = tgBot.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   texts.UnknownMenuAction,
@@ -223,15 +242,19 @@ func onMainMenuSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update
 	}
 
 	var response string
+	menuAllText, err := menuTexts(languageCode)
+	if err != nil || menuAllText.FindClinicHelpMessage == "" {
+		params.Log.Error(fmt.Sprintf("languageCode not found %s", languageCode))
+	}
 	switch action {
 	case ActionFindClinic:
-		response = menuTexts(languageCode).FindClinicHelpMessage
+		response = menuAllText.FindClinicHelpMessage
 	case ActionChangeCity:
-		response = menuTexts(languageCode).ChangeCityButton
+		response = menuAllText.ChangeCityButton
 	case ActionChangeLanguage:
-		response = menuTexts(languageCode).ChangeLanguageButton
+		response = menuAllText.ChangeLanguageButton
 	default:
-		response = menuTexts(languageCode).UnknownMenuAction
+		response = menuAllText.UnknownMenuAction
 	}
 
 	_, _ = tgBot.SendMessage(ctx, &bot.SendMessageParams{
@@ -251,7 +274,11 @@ func onLanguageSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update
 
 	newLanguage, ok := ResolveLanguage(update.Message.Text)
 	if !ok {
-		texts := menuTexts(resolveUserLanguage(ctx, update))
+		texts, err := menuTexts(resolveUserLanguage(ctx, tgBot, update))
+		if err != nil || texts.Prompt == "" {
+			params.Log.Error(fmt.Sprintf("languageCode not found %s", update.Message.Text))
+			return
+		}
 		_, _ = tgBot.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   texts.UnknownLanguageMessage,
@@ -259,16 +286,10 @@ func onLanguageSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update
 		return
 	}
 
-	userInfo := update.Message.From
 	user, err := dbManager.GetUser(ctx, update.Message.Chat.ID)
 	if err != nil || user == nil {
-		user = &db.User{
-			ID:       userInfo.ID,
-			Username: userInfo.Username,
-			Name:     userInfo.FirstName,
-			Lastname: userInfo.LastName,
-			IsBot:    userInfo.IsBot,
-		}
+		params.Log.Error("user not found")
+		return
 	}
 
 	user.LanguageCode = newLanguage
@@ -278,7 +299,11 @@ func onLanguageSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update
 		return
 	}
 
-	texts := menuTexts(newLanguage)
+	texts, err := menuTexts(newLanguage)
+	if err != nil || texts.Prompt == "" {
+		params.Log.Error(fmt.Sprintf("languageCode not found %s", newLanguage))
+		return
+	}
 
 	_, _ = tgBot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,

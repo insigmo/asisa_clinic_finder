@@ -9,8 +9,10 @@ type StateMachine struct {
 }
 
 const (
+	StateIdle       fsm.StateID = ""
 	StateStart      fsm.StateID = "start"
 	StateChangeCity fsm.StateID = "change_city"
+	StateFindClinic fsm.StateID = "find_clinic"
 )
 
 func New() *StateMachine {

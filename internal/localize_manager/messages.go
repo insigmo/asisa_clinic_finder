@@ -23,3 +23,7 @@ func (l *Localizator) WrongDirection() string {
 func (l *Localizator) Perhaps() string {
 	return l.mapper["/perhaps"]
 }
+
+func (l *Localizator) AskDirectionMessage() string {
+	return l.mapper["/ask_direction"]
+}

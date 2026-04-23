@@ -42,19 +42,41 @@ func Default(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 		return
 
 	case string(fsm_states.StateChangeCity):
-		handleCityInput(ctx, tgBot, update, user)
+		handleCityInput(ctx, tgBot, update)
+		return
+	case string(fsm_states.StateStart):
+		handleStart(params, user)
 		return
 	}
-
 	localizer := localize_manager.New(user.LanguageCode)
-	if err := helpers.SendMessage(params, localizer.StartMessage()); err != nil {
+
+	if err := helpers.SendMessageWithReplyMarkup(
+		params,
+		localizer.UnknownMessage(),
+		keyboards.BuildMainMenu(params.TgBot, user.LanguageCode),
+	); err != nil {
 		params.Log.Error(err.Error())
+		return
 	}
 }
 
-func handleCityInput(ctx context.Context, tgBot *bot.Bot, update *models.Update, user *db.User) {
+func handleStart(params *local_models.BaseParams, user *db.User) {
+	localizer := localize_manager.New(user.LanguageCode)
+
+	if err := helpers.SendMessageWithReplyMarkup(
+		params,
+		localizer.SaveUserMessage(),
+		keyboards.BuildMainMenu(params.TgBot, user.LanguageCode),
+	); err != nil {
+		params.Log.Error(err.Error())
+		return
+	}
+}
+
+func handleCityInput(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	params := local_models.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
+	user := helpers.FetchUser(params, dbManager)
 
 	city := strings.TrimSpace(update.Message.Text)
 	if city == "" {

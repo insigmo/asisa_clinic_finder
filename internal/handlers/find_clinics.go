@@ -44,6 +44,7 @@ func FindClinic(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 
 	localizator := localize_manager.New(user.LanguageCode)
 
+	// TODO добавить поиск поликлиник по Левенштейну
 	direction := strings.TrimSpace(update.Message.Text)
 	if direction == "" {
 		return

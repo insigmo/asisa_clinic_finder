@@ -4,6 +4,8 @@ import "fmt"
 
 type messageMapper map[string]string
 
+// TODO Попросить поправить текста через ии с мед смайликами
+
 var (
 	rusMessages = messageMapper{
 		"/start":           `Добро пожаловать\. Пожалуйста введите город в котором вы хотите найти поликлинику`,
@@ -13,6 +15,7 @@ var (
 		"/wrong_direction": `Извините, но мы не нашли медицинское направление\.`,
 		"/perhaps":         ` Возможно вы имели ввиду: `,
 		"/ask_direction":   `Пожалуйста, укажите медицинское направление, по которому необходимо подобрать поликлинику`,
+		"/unknown_call":    `Извините, неизвестная команда`,
 	}
 	esMessages = messageMapper{
 		"/start":           `Bienvenido/a\. Por favor, introducer la ciudad en la que desea encontrar una clínica\.`,
@@ -22,6 +25,7 @@ var (
 		"/wrong_direction": `Lo sentimos, pero no hemos encontrado ninguna derivación médica\.`,
 		"/perhaps":         ` Quizás se refería a: `,
 		"/ask_direction":   `Por favor, indique la especialidad médica para la que desea encontrar una clínica`,
+		"/unknown_call":    `Perdón, comando desconocido`,
 	}
 	enMessages = messageMapper{
 		"/start":           `Welcome\. Please enter the city in which you would like to find a clinic\.`,
@@ -31,6 +35,7 @@ var (
 		"/wrong_direction": `Sorry, but we couldn't find a medical referral\.`,
 		"/perhaps":         ` Perhaps you meant: `,
 		"/ask_direction":   `Please specify the medical specialty for which you would like to find a clinic`,
+		"/unknown_call":    `Sorry, unknown command`,
 	}
 	allMessages = []messageMapper{rusMessages, esMessages, enMessages}
 )

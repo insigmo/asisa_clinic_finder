@@ -27,3 +27,7 @@ func (l *Localizator) Perhaps() string {
 func (l *Localizator) AskDirectionMessage() string {
 	return l.mapper["/ask_direction"]
 }
+
+func (l *Localizator) UnknownMessage() string {
+	return l.mapper["/unknown_call"]
+}

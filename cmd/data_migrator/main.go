@@ -8,6 +8,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// TODO поправить список направлений. К примеру нет UROLOGÍA
+
 const (
 	dbFileName = "db/local.db"
 	dbName     = "sqlite3"

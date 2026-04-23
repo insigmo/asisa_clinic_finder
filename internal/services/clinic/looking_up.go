@@ -12,7 +12,7 @@ import (
 
 func Search(ctx context.Context, city, direction string, postalCode int) (string, error) {
 	client := helpers.NewHTTPManager()
-
+	// TODO добавить пагинацию до 5 страниц
 	places, err := client.FetchPlaces(ctx, city)
 	if err != nil {
 		return "", fmt.Errorf("fetch places: %w", err)
@@ -56,6 +56,7 @@ func escapeMarkdownV2(text string) string {
 
 func prepareResult(clinics []local_models.Clinic) string {
 	if len(clinics) == 0 {
+		// TODO поправить на мультиязычный вариант
 		return "_No clinics found_"
 	}
 
@@ -68,6 +69,8 @@ func prepareResult(clinics []local_models.Clinic) string {
 	builder.WriteString("*\n")
 	builder.WriteString(fmt.Sprintf("_Found %d clinic\\(s\\)_\n\n", len(clinics)))
 
+	// TODO Добавить на 1 страницу 1 сообщение
+	// TODO Добавить возможность копировать адрес
 	for i, c := range clinics {
 		// Номер + название клиники жирным
 		name := escapeMarkdownV2(strings.ToTitle(strings.ToLower(c.Name)))

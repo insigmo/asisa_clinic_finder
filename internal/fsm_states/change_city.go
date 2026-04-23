@@ -11,7 +11,13 @@ import (
 	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
 )
 
-const MinLanguageCodeLen = 2
+const (
+	MinLanguageCodeLen             = 2
+	StateIdle          fsm.StateID = ""
+	StateStart         fsm.StateID = "start"
+	StateChangeCity    fsm.StateID = "change_city"
+	StateFindClinic    fsm.StateID = "find_clinic"
+)
 
 func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
 	if len(args) == 0 {
@@ -60,6 +66,7 @@ func (s *StateMachine) CallbackChangeCity(_ *fsm.FSM, args ...any) {
 		IsBot:        userInfo.IsBot,
 		City:         city,
 		LanguageCode: userInfo.LanguageCode,
+		State:        "",
 	}
 
 	if err := dbManager.InsertOrUpdateUser(params.Ctx, user); err != nil {

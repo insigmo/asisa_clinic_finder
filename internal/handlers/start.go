@@ -14,7 +14,8 @@ import (
 
 func Start(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	params := local_models.NewBaseParams(ctx, tgBot, update)
-	localizator := localize_manager.New(update.Message.From.LanguageCode)
+	languageCode := update.Message.From.LanguageCode
+	localizator := localize_manager.New(languageCode)
 
 	if err := helpers.SendMessage(params, localizator.StartMessage()); err != nil {
 		params.Log.Error(err.Error())

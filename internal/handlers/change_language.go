@@ -17,7 +17,3 @@ func ChangeLanguage(ctx context.Context, tgBot *bot.Bot, update *models.Update) 
 		params.Log.Error(err.Error())
 	}
 }
-
-func ChangeLanguageSelection(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	keyboards.HandleLanguageSelection(ctx, tgBot, update)
-}

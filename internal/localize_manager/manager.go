@@ -5,6 +5,7 @@ import "fmt"
 type messageMapper map[string]string
 
 // TODO Попросить поправить текста через ии с мед смайликами
+// TODO Добавить к неизвестной команде чтобы нажали на кнопку и выбрали пункт сначала
 
 var (
 	rusMessages = messageMapper{

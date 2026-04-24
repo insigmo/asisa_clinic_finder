@@ -1,4 +1,4 @@
-package middlewares
+package middleware
 
 import (
 	"context"
@@ -7,13 +7,14 @@ import (
 	"github.com/go-telegram/bot/models"
 
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
-func DBMiddleware(dbManager *db.Manager) bot.Middleware {
+// DB — middleware, инжектирующий *db.Manager в контекст каждого запроса.
+func DB(dbManager *db.Manager) bot.Middleware {
 	return func(next bot.HandlerFunc) bot.HandlerFunc {
 		return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-			ctx = context.WithValue(ctx, local_models.DBManagerKey, dbManager)
+			ctx = context.WithValue(ctx, model.DBManagerKey, dbManager)
 			next(ctx, b, update)
 		}
 	}

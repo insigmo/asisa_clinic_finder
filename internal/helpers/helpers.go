@@ -9,25 +9,25 @@ import (
 	"github.com/go-telegram/ui/keyboard/reply"
 
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
-func SendMessage(params *local_models.BaseParams, text string) error {
+// SendMessage отправляет текстовое сообщение пользователю (Markdown).
+func SendMessage(params *model.BaseParams, text string) error {
 	msg, err := params.TgBot.SendMessage(params.Ctx, &bot.SendMessageParams{
 		ChatID:    params.UserID,
 		Text:      text,
 		ParseMode: models.ParseModeMarkdown,
 	})
 	if err != nil {
-		return fmt.Errorf("send message '%s' failed: %v", text, err)
+		return fmt.Errorf("send message: %w", err)
 	}
-
 	params.Log.Debug(msg.Text)
-
 	return nil
 }
 
-func SendMessageWithReplyMarkup(params *local_models.BaseParams, text string, keyboard *reply.ReplyKeyboard) error {
+// SendMessageWithReplyMarkup отправляет сообщение с reply-клавиатурой.
+func SendMessageWithReplyMarkup(params *model.BaseParams, text string, keyboard *reply.ReplyKeyboard) error {
 	msg, err := params.TgBot.SendMessage(params.Ctx, &bot.SendMessageParams{
 		ChatID:      params.UserID,
 		Text:        text,
@@ -35,16 +35,15 @@ func SendMessageWithReplyMarkup(params *local_models.BaseParams, text string, ke
 		ReplyMarkup: keyboard,
 	})
 	if err != nil {
-		return fmt.Errorf("send message '%s' failed: %v", text, err)
+		return fmt.Errorf("send message with markup: %w", err)
 	}
-
 	params.Log.Debug(msg.Text)
-
 	return nil
 }
 
-func GetDbManager(params *local_models.BaseParams) *db.Manager {
-	dbManager, ok := params.Ctx.Value(local_models.DBManagerKey).(*db.Manager)
+// GetDbManager извлекает *db.Manager из контекста.
+func GetDbManager(params *model.BaseParams) *db.Manager {
+	dbManager, ok := params.Ctx.Value(model.DBManagerKey).(*db.Manager)
 	if !ok {
 		params.Log.Error("db manager not found in context")
 		return nil
@@ -52,40 +51,46 @@ func GetDbManager(params *local_models.BaseParams) *db.Manager {
 	return dbManager
 }
 
-func FetchUser(params *local_models.BaseParams, dbManager *db.Manager) *db.User {
+// FetchUser возвращает пользователя из БД, создавая запись если её нет.
+func FetchUser(params *model.BaseParams, dbManager *db.Manager) *db.User {
 	user, err := dbManager.GetUser(params.Ctx, params.UserID)
-	userInfo := params.Update.Message.From
-
-	if err != nil || user == nil {
-		user = &db.User{
-			ID:           userInfo.ID,
-			Username:     userInfo.Username,
-			Name:         userInfo.FirstName,
-			Lastname:     userInfo.LastName,
-			IsBot:        userInfo.IsBot,
-			City:         params.Update.Message.Text,
-			LanguageCode: userInfo.LanguageCode,
-			State:        "",
-		}
-		err = dbManager.InsertOrUpdateUser(params.Ctx, user)
-		if err != nil {
-			params.Log.Error(err.Error())
-			return nil
-		}
+	if err != nil {
+		params.Log.Error("get user: " + err.Error())
+		return nil
 	}
-	return user
+	if user != nil {
+		return user
+	}
+
+	info := params.Update.Message.From
+	newUser := &db.User{
+		ID:           info.ID,
+		Username:     info.Username,
+		Name:         info.FirstName,
+		Lastname:     info.LastName,
+		IsBot:        info.IsBot,
+		LanguageCode: info.LanguageCode,
+	}
+	if err = dbManager.InsertOrUpdateUser(params.Ctx, newUser); err != nil {
+		params.Log.Error("insert user: " + err.Error())
+		return nil
+	}
+	return newUser
 }
 
-func SetUserState(params *local_models.BaseParams, state fsm.StateID) {
+// SetUserState сохраняет новое состояние FSM пользователя в БД.
+func SetUserState(params *model.BaseParams, state fsm.StateID) {
 	dbManager := GetDbManager(params)
-	user := FetchUser(params, dbManager)
-	if user == nil {
-		params.Log.Error("User not found")
+	if dbManager == nil {
 		return
 	}
-
+	user := FetchUser(params, dbManager)
+	if user == nil {
+		params.Log.Error("set user state: user not found")
+		return
+	}
 	user.State = string(state)
 	if err := dbManager.InsertOrUpdateUser(params.Ctx, user); err != nil {
-		params.Log.Error(err.Error())
+		params.Log.Error("set user state: " + err.Error())
 	}
 }

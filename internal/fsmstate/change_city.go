@@ -1,4 +1,4 @@
-package fsm_states
+package fsmstate
 
 import (
 	"strings"
@@ -8,8 +8,8 @@ import (
 	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
-	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
+	"github.com/insigmo/asisa_clinic_finder/internal/i18n"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
 const (
@@ -21,12 +21,12 @@ func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
 		return
 	}
 
-	params, ok := args[0].(*local_models.BaseParams)
+	params, ok := args[0].(*model.BaseParams)
 	if !ok {
 		return
 	}
 
-	localizer := localize_manager.New(params.Update.Message.From.LanguageCode)
+	localizer := i18n.New(params.Update.Message.From.LanguageCode)
 	if err := helpers.SendMessage(params, localizer.StartMessage()); err != nil {
 		params.Log.Error(err.Error())
 		return
@@ -40,7 +40,7 @@ func (s *StateMachine) CallbackChangeCity(_ *fsm.FSM, args ...any) {
 		return
 	}
 
-	params, _ := args[0].(*local_models.BaseParams)
+	params, _ := args[0].(*model.BaseParams)
 	dbManager, ok := params.Ctx.Value("dbManager").(*db.Manager)
 	if !ok {
 		params.Log.Error("db manager not found in context")
@@ -72,7 +72,7 @@ func (s *StateMachine) CallbackChangeCity(_ *fsm.FSM, args ...any) {
 		return
 	}
 
-	localizer := localize_manager.New(userInfo.LanguageCode)
+	localizer := i18n.New(userInfo.LanguageCode)
 	if err := helpers.SendMessage(params, localizer.SaveUserMessage()); err != nil {
 		params.Log.Error(err.Error())
 	}

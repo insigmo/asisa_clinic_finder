@@ -10,13 +10,13 @@ import (
 	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
+	"github.com/insigmo/asisa_clinic_finder/internal/i18n"
 	"github.com/insigmo/asisa_clinic_finder/internal/keyboards"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
-	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
 func Default(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -49,8 +49,8 @@ func Default(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	FindClinic(ctx, tgBot, update)
 }
 
-func handleStart(params *local_models.BaseParams, user *db.User) {
-	localizer := localize_manager.New(user.LanguageCode)
+func handleStart(params *model.BaseParams, user *db.User) {
+	localizer := i18n.New(user.LanguageCode)
 
 	if err := helpers.SendMessageWithReplyMarkup(
 		params,
@@ -63,7 +63,7 @@ func handleStart(params *local_models.BaseParams, user *db.User) {
 }
 
 func handleCityInput(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -83,7 +83,7 @@ func handleCityInput(ctx context.Context, tgBot *bot.Bot, update *models.Update)
 		return
 	}
 
-	localizer := localize_manager.New(user.LanguageCode)
+	localizer := i18n.New(user.LanguageCode)
 	if len(postalCodes) == 0 {
 		if err = helpers.SendMessage(params, localizer.WrongCityMessage()); err != nil {
 			params.Log.Error(err.Error())

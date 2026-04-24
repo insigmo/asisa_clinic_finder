@@ -2,14 +2,14 @@ package clinic
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
-	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
+	"github.com/insigmo/asisa_clinic_finder/internal/i18n"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 	maxClinics         = maxPages * countClinicsOnPage
 )
 
-func Search(params *local_models.BaseParams, dbManager *db.Manager, user *db.User, direction string) (string, error) {
+func Search(params *model.BaseParams, dbManager *db.Manager, user *db.User, direction string) (string, error) {
 	client := helpers.NewHTTPManager()
 	places, err := client.FetchPlaces(params.Ctx, user.City)
 	if err != nil {
@@ -32,7 +32,7 @@ func Search(params *local_models.BaseParams, dbManager *db.Manager, user *db.Use
 	if err != nil {
 		return "", fmt.Errorf("fetch province id: %w", err)
 	}
-	allClinics := make([]local_models.Clinic, 0, maxClinics)
+	allClinics := make([]model.Clinic, 0, maxClinics)
 
 	for i := 1; i <= maxPages; i++ {
 		data, err := client.FetchClinics(params.Ctx, provinceID, direction, i)
@@ -71,8 +71,8 @@ func escapeMarkdownV2(text string) string {
 	return builder.String()
 }
 
-func sortClinicsByPostalCode(clinics []local_models.Clinic, params *local_models.BaseParams, dbManager *db.Manager, user *db.User) []local_models.Clinic {
-	localizator := localize_manager.New(user.LanguageCode)
+func sortClinicsByPostalCode(clinics []model.Clinic, params *model.BaseParams, dbManager *db.Manager, user *db.User) []model.Clinic {
+	localizator := i18n.New(user.LanguageCode)
 	postalCodes, err := dbManager.FindCity(params.Ctx, user.City)
 	if err != nil {
 		params.Log.Error(err.Error())
@@ -92,21 +92,21 @@ func sortClinicsByPostalCode(clinics []local_models.Clinic, params *local_models
 	return sortClinics(clinics, postalCode)
 }
 
-func sortClinics(clinics []local_models.Clinic, postalCode int) []local_models.Clinic {
+func sortClinics(clinics []model.Clinic, postalCode int) []model.Clinic {
 	abs := func(x int) int {
 		if x < 0 {
 			return -x
 		}
 		return x
 	}
-	sort.Slice(clinics, func(i, j int) bool {
-		return abs(clinics[i].PostalCode-postalCode) < abs(clinics[j].PostalCode-postalCode)
+	slices.SortFunc(clinics, func(a, b model.Clinic) int {
+		return abs(a.PostalCode-postalCode) - abs(b.PostalCode-postalCode)
 	})
 	return clinics
 }
 
-func prepareResult(clinics []local_models.Clinic, languageCode string) string {
-	localizator := localize_manager.New(languageCode)
+func prepareResult(clinics []model.Clinic, languageCode string) string {
+	localizator := i18n.New(languageCode)
 	if len(clinics) == 0 {
 		return localizator.ClinicsNotFound()
 	}

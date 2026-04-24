@@ -13,7 +13,7 @@ import (
 
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
 const (
@@ -104,7 +104,7 @@ func normalizeLanguage(languageCode string) string {
 }
 
 func resolveUserLanguage(ctx context.Context, tgBot *bot.Bot, update *models.Update) string {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -149,7 +149,7 @@ func BuildLanguageMenu(tgBot *bot.Bot) *reply.ReplyKeyboard {
 }
 
 func SendMainMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update) error {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -174,7 +174,7 @@ func SendMainMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update) er
 }
 
 func SendLanguageMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update) error {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -198,7 +198,7 @@ func SendLanguageMenu(ctx context.Context, tgBot *bot.Bot, update *models.Update
 	return nil
 }
 
-func ResolveMainMenuAction(params *local_models.BaseParams) (string, bool) {
+func ResolveMainMenuAction(params *model.BaseParams) (string, bool) {
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -237,7 +237,7 @@ func ResolveLanguage(text string) (string, bool) {
 }
 
 func onMainMenuSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -290,9 +290,9 @@ func onMainMenuSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update
 }
 
 func onLanguageSelect(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 
-	dbManager, ok := ctx.Value(local_models.DBManagerKey).(*db.Manager)
+	dbManager, ok := ctx.Value(model.DBManagerKey).(*db.Manager)
 	if !ok {
 		params.Log.Error("dbManager is not set to context")
 		return

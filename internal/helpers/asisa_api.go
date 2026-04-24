@@ -13,7 +13,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
 const (
@@ -21,18 +21,17 @@ const (
 	maxPlaces = 10
 )
 
+// postalCodePattern — компилируем один раз, переиспользуем при каждом парсинге.
 var postalCodePattern = regexp.MustCompile(`\d{5}`)
 
 func (h *HTTPManager) FetchClinics(ctx context.Context, provinceID int, direction string, page int) (string, error) {
-	fetchURL := baseURL + "/cuadro-medico/resultados-cuadro-medico"
 	q := urlpkg.Values{}
 	q.Set("networkId", "1")
 	q.Set("specialityType", "1")
 	q.Set("specialityName", strings.ToUpper(direction))
 	q.Set("provinceId", strconv.Itoa(provinceID))
 	q.Set("page", strconv.Itoa(page))
-
-	body, err := h.sendGet(ctx, fetchURL, q.Encode())
+	body, err := h.sendGet(ctx, baseURL+"/cuadro-medico/resultados-cuadro-medico", q.Encode())
 	if err != nil {
 		return "", err
 	}
@@ -40,31 +39,27 @@ func (h *HTTPManager) FetchClinics(ctx context.Context, provinceID int, directio
 }
 
 func (h *HTTPManager) FetchProvinceID(ctx context.Context, placeID string) (int, error) {
-	fetchURL := baseURL + "/bin/wasisa/gmaps-service"
 	q := urlpkg.Values{}
 	q.Set("id", placeID)
-
-	body, err := h.sendGet(ctx, fetchURL, q.Encode())
+	body, err := h.sendGet(ctx, baseURL+"/bin/wasisa/gmaps-service", q.Encode())
 	if err != nil {
 		return 0, err
 	}
-	var province local_models.Province
+	var province model.Province
 	if err := json.Unmarshal(body, &province); err != nil {
 		return 0, fmt.Errorf("unmarshal province: %w", err)
 	}
 	return province.ProvinceID, nil
 }
 
-func (h *HTTPManager) FetchPlaces(ctx context.Context, town string) ([]local_models.Place, error) {
-	fetchURL := baseURL + "/bin/wasisa/autocomplete-addresses"
+func (h *HTTPManager) FetchPlaces(ctx context.Context, town string) ([]model.Place, error) {
 	q := urlpkg.Values{}
 	q.Set("q", strings.ToLower(town))
-
-	body, err := h.sendGet(ctx, fetchURL, q.Encode())
+	body, err := h.sendGet(ctx, baseURL+"/bin/wasisa/autocomplete-addresses", q.Encode())
 	if err != nil {
 		return nil, err
 	}
-	places := make([]local_models.Place, 0, maxPlaces)
+	places := make([]model.Place, 0, maxPlaces)
 	if err := json.Unmarshal(body, &places); err != nil {
 		return nil, fmt.Errorf("unmarshal places: %w", err)
 	}
@@ -72,22 +67,15 @@ func (h *HTTPManager) FetchPlaces(ctx context.Context, town string) ([]local_mod
 }
 
 func (h *HTTPManager) sendGet(ctx context.Context, rawURL, values string) ([]byte, error) {
-	fullURL := rawURL + "?" + values
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL+"?"+values, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
-
 	resp, err := h.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("do request: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println("failed to close body: ", err)
-		}
-	}(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -99,18 +87,18 @@ func (h *HTTPManager) sendGet(ctx context.Context, rawURL, values string) ([]byt
 	return body, nil
 }
 
-func (h *HTTPManager) ParseHTML(data, direction string) ([]local_models.Clinic, error) {
+func (h *HTTPManager) ParseHTML(data, direction string) ([]model.Clinic, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("parse html: %w", err)
 	}
-	clinics := make([]local_models.Clinic, 0, maxPlaces)
+	clinics := make([]model.Clinic, 0, maxPlaces)
 	doc.Find("div.cmp-medical-picture-result__info-container").Each(func(_ int, s *goquery.Selection) {
 		name := strings.TrimSpace(s.Find(".cmp-medical-picture-result__info-container__contact-data--name").Text())
 		address := strings.TrimSpace(s.Find(".cmp-medical-picture-result__info-container--address").Text())
 		phone := strings.TrimSpace(s.Find(".cmp-medical-picture-result__info-container__location--phone").Text())
 		postal, _ := strconv.Atoi(postalCodePattern.FindString(address))
-		clinics = append(clinics, local_models.Clinic{
+		clinics = append(clinics, model.Clinic{
 			Name:        strings.ToLower(name),
 			Direction:   direction,
 			Address:     strings.ToLower(address),

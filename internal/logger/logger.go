@@ -7,10 +7,11 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func ConfigureLogger() (*zap.Logger, error) {
+// New создаёт и возвращает настроенный zap.Logger.
+func New() (*zap.Logger, error) {
 	cfg := zap.Config{
 		Level:            zap.NewAtomicLevelAt(zapcore.DebugLevel),
-		Encoding:         "json", // или "console"
+		Encoding:         "console",
 		OutputPaths:      []string{"stdout", "./app.log"},
 		ErrorOutputPaths: []string{"stderr"},
 		EncoderConfig: zapcore.EncoderConfig{
@@ -23,11 +24,9 @@ func ConfigureLogger() (*zap.Logger, error) {
 			EncodeCaller: zapcore.ShortCallerEncoder,
 		},
 	}
-
 	log, err := cfg.Build()
 	if err != nil {
-		return nil, fmt.Errorf("failed when creating logger config: %v", err)
+		return nil, fmt.Errorf("build logger: %w", err)
 	}
-
 	return log, nil
 }

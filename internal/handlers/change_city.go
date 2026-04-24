@@ -5,15 +5,15 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 
+	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
-	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
+	"github.com/insigmo/asisa_clinic_finder/internal/i18n"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
 func ChangeCity(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -21,7 +21,7 @@ func ChangeCity(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 		return
 	}
 	userInfo := update.Message.From
-	localizator := localize_manager.New(user.LanguageCode)
+	localizator := i18n.New(user.LanguageCode)
 
 	if user.LanguageCode == "" {
 		user.LanguageCode = userInfo.LanguageCode

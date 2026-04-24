@@ -8,12 +8,12 @@ import (
 
 	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
-	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
+	"github.com/insigmo/asisa_clinic_finder/internal/i18n"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
 
 func Start(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -21,7 +21,7 @@ func Start(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 		return
 	}
 	languageCode := user.LanguageCode
-	localizator := localize_manager.New(languageCode)
+	localizator := i18n.New(languageCode)
 
 	helpers.SetUserState(params, constants.StateChangeCity)
 
@@ -29,5 +29,4 @@ func Start(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 		params.Log.Error(err.Error())
 		return
 	}
-
 }

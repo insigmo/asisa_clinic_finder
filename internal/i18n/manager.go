@@ -1,6 +1,10 @@
-package localize_manager
+package i18n
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+	"sync"
+)
 
 type messageMapper map[string]string
 
@@ -47,39 +51,41 @@ var (
 		"/address":           `Address: `,
 		"/phone":             `Phone: `,
 	}
-	allMessages = []messageMapper{rusMessages, esMessages, enMessages}
+
+	once sync.Once
 )
 
-type Localizator struct {
-	mapper messageMapper
-}
+// Localizer предоставляет локализованные сообщения.
+type Localizer struct{ mapper messageMapper }
 
-func New(languageCode string) *Localizator {
-	validateMessages()
-
-	mapper := enMessages
-
-	switch languageCode {
-	case "ru":
-		mapper = rusMessages
-	case "es":
-		mapper = esMessages
-	case "en":
-		mapper = enMessages
-	}
-
-	return &Localizator{
-		mapper: mapper,
-	}
-}
-
-func validateMessages() {
-	expectLength := len(allMessages[0])
-
-	for _, msgs := range allMessages[1:] {
-		currentLength := len(msgs)
-		if expectLength != currentLength {
-			panic(fmt.Sprintf("expect length %d, got %d. %v", expectLength, currentLength, msgs))
+// New возвращает Localizer для заданного языкового кода (ru/es/en, по умолчанию en).
+func New(languageCode string) *Localizer {
+	once.Do(func() {
+		want := len(enMessages)
+		for _, m := range []messageMapper{rusMessages, esMessages} {
+			if len(m) != want {
+				panic(fmt.Sprintf("i18n: map length mismatch: want %d, got %d", want, len(m)))
+			}
 		}
+	})
+	switch normalize(languageCode) {
+	case "ru":
+		return &Localizer{mapper: rusMessages}
+	case "es":
+		return &Localizer{mapper: esMessages}
+	default:
+		return &Localizer{mapper: enMessages}
+	}
+}
+
+func normalize(code string) string {
+	code = strings.TrimSpace(strings.ToLower(code))
+	switch {
+	case strings.HasPrefix(code, "ru"):
+		return "ru"
+	case strings.HasPrefix(code, "es"):
+		return "es"
+	default:
+		return "en"
 	}
 }

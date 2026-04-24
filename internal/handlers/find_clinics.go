@@ -7,27 +7,27 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/insigmo/asisa_clinic_finder/internal/keyboards"
 
 	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
-	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
-	"github.com/insigmo/asisa_clinic_finder/internal/localize_manager"
+	"github.com/insigmo/asisa_clinic_finder/internal/i18n"
+	"github.com/insigmo/asisa_clinic_finder/internal/keyboards"
+	"github.com/insigmo/asisa_clinic_finder/internal/model"
 	"github.com/insigmo/asisa_clinic_finder/internal/services/clinic"
 )
 
 const findClinicTimeout = 15 * time.Second
 
 func RequestClinicDirection(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
 		params.Log.Error("User not found")
 		return
 	}
-	localizator := localize_manager.New(user.LanguageCode)
+	localizator := i18n.New(user.LanguageCode)
 
 	helpers.SetUserState(params, constants.StateIdle)
 
@@ -37,7 +37,7 @@ func RequestClinicDirection(ctx context.Context, tgBot *bot.Bot, update *models.
 }
 
 func FindClinic(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
-	params := local_models.NewBaseParams(ctx, tgBot, update)
+	params := model.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
 	if user == nil {
@@ -65,8 +65,8 @@ func FindClinic(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	helpers.SetUserState(params, constants.StateIdle)
 }
 
-func validateDirection(params *local_models.BaseParams, dbManager *db.Manager, user *db.User, direction string) (string, error) {
-	localizator := localize_manager.New(user.LanguageCode)
+func validateDirection(params *model.BaseParams, dbManager *db.Manager, user *db.User, direction string) (string, error) {
+	localizator := i18n.New(user.LanguageCode)
 
 	opCtx, cancel := context.WithTimeout(params.Ctx, findClinicTimeout)
 	defer cancel()

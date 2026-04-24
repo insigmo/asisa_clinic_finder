@@ -7,17 +7,17 @@ import (
 
 const maxDist = 3
 
+//nolint:nolintlint,gocognit,funlen
 func levenshtein(a, b string, maxDist int) int {
 	ra, rb := []rune(a), []rune(b)
 	la, lb := len(ra), len(rb)
 
-	// Убеждаемся что a — более короткая строка (меньше итераций внешнего цикла)
 	if la > lb {
 		ra, rb = rb, ra
 		la, lb = lb, la
 	}
 
-	// Разница длин уже больше maxDist — результат точно хуже
+	// Early exit: length difference already exceeds threshold.
 	if lb-la > maxDist {
 		return maxDist + 1
 	}
@@ -73,7 +73,7 @@ func levenshtein(a, b string, maxDist int) int {
 			prev = tmp
 		}
 
-		// Вся строка вышла за порог — дальше лучше не станет
+		// Early exit: all values in row exceed threshold.
 		if minInRow > maxDist {
 			return maxDist + 1
 		}
@@ -87,24 +87,12 @@ func levenshtein(a, b string, maxDist int) int {
 }
 
 func FindSimilar(query string, dict []string) []string {
+	query = strings.ToLower(query)
 	var result []string
-	dict = Map[string, string](dict, func(s string) string {
-		return strings.ToLower(s)
-	})
-
 	for _, word := range dict {
-		if levenshtein(query, word, maxDist) <= maxDist {
+		if levenshtein(query, strings.ToLower(word), maxDist) <= maxDist {
 			result = append(result, word)
 		}
 	}
-	result = slices.Compact(result)
-	return result
-}
-
-func Map[T, V any](ts []T, fn func(T) V) []V {
-	result := make([]V, len(ts))
-	for i, t := range ts {
-		result[i] = fn(t)
-	}
-	return result
+	return slices.Compact(result)
 }

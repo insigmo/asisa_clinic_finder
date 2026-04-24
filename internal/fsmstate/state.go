@@ -1,4 +1,4 @@
-package fsm_states
+package fsmstate
 
 import (
 	"github.com/go-telegram/fsm"

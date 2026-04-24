@@ -5,9 +5,9 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/go-telegram/fsm"
 	"github.com/go-telegram/ui/keyboard/reply"
 
+	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/model"
 )
@@ -79,7 +79,7 @@ func FetchUser(params *model.BaseParams, dbManager *db.Manager) *db.User {
 }
 
 // SetUserState сохраняет новое состояние FSM пользователя в БД.
-func SetUserState(params *model.BaseParams, state fsm.StateID) {
+func SetUserState(params *model.BaseParams, state constants.StateID) {
 	dbManager := GetDbManager(params)
 	if dbManager == nil {
 		return

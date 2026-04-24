@@ -1,9 +1,9 @@
 package constants
 
-import "github.com/go-telegram/fsm"
+type StateID string
 
 const (
-	StateIdle       fsm.StateID = "find_clinic"
-	StateStart      fsm.StateID = "start"
-	StateChangeCity fsm.StateID = "change_city"
+	StateIdle       StateID = "find_clinic"
+	StateStart      StateID = "start"
+	StateChangeCity StateID = "change_city"
 )

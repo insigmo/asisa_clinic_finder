@@ -37,20 +37,18 @@ docker compose up -d
 2. **Выполняет миграции** (`task migrate`) — создаёт таблицы и загружает справочные данные
 3. **Запускает бота**
 
-> ℹ️ SQLite база данных хранится в Docker volume `bot_data` и переживает перезапуски контейнера.
-
 ---
 
 ## 🔧 Управление
 
-| Команда | Описание |
-|---------|----------|
-| `docker compose up -d` | Запустить в фоне |
-| `docker compose down` | Остановить и удалить контейнер |
-| `docker compose down -v` | Остановить и **удалить данные** (volume) |
-| `docker compose logs -f` | Следить за логами в реальном времени |
-| `docker compose restart bot` | Перезапустить бота |
-| `docker compose build --no-cache` | Пересобрать образ с нуля |
+| Команда                           | Описание                                 |
+|-----------------------------------|------------------------------------------|
+| `docker compose up -d`            | Запустить в фоне                         |
+| `docker compose down`             | Остановить и удалить контейнер           |
+| `docker compose down -v`          | Остановить и **удалить данные** (volume) |
+| `docker compose logs -f`          | Следить за логами в реальном времени     |
+| `docker compose restart bot`      | Перезапустить бота                       |
+| `docker compose build --no-cache` | Пересобрать образ с нуля                 |
 
 ### Просмотр логов
 
@@ -68,53 +66,6 @@ docker compose run --rm bot task migrate
 
 ---
 
-## 🗂 Структура проекта
-
-```
-asisa_clinic_finder/
-├── cmd/
-│   ├── bot/              # Точка входа бота
-│   └── data_migrator/    # Загрузчик справочных данных (направления, города)
-├── internal/
-│   ├── constants/        # Состояния FSM
-│   ├── db/               # Работа с SQLite
-│   ├── fsmstate/         # Машина состояний (колбэки)
-│   ├── handlers/         # Telegram-хендлеры
-│   ├── helpers/          # HTTP-клиент ASISA, утилиты
-│   ├── i18n/             # Локализация (ru / es / en)
-│   ├── keyboards/        # Reply-клавиатуры
-│   ├── logger/           # Настройка zap-логгера
-│   ├── middleware/        # Telegram middleware (inject DB)
-│   ├── model/            # Общие модели данных
-│   └── services/clinic/  # Бизнес-логика поиска клиник
-├── migrations/           # SQL-миграции (goose)
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-└── Taskfile.yml
-```
-
----
-
-## ⚙️ Переменные окружения
-
-| Переменная | Обязательная | Описание |
-|------------|:------------:|----------|
-| `BOT_TOKEN` | ✅ | Токен Telegram-бота от @BotFather |
-
----
-
-## 🤖 Команды бота
-
-| Команда / Кнопка | Описание |
-|-----------------|----------|
-| `/start` | Начало работы, ввод города |
-| **Найти поликлинику** / *Buscar clínica* / *Find clinic* | Поиск клиники по направлению |
-| **Поменять город** / *Cambiar ciudad* / *Change city* | Изменить сохранённый город |
-| **Поменять язык** / *Cambiar idioma* / *Change language* | Переключить язык интерфейса |
-
----
-
 ## 🏗 Сборка без Docker (локально)
 
 ```bash
@@ -127,11 +78,3 @@ task migrate
 # Запустите бота
 BOT_TOKEN=<ваш_токен> go run ./cmd/bot
 ```
-
----
-
-## 📦 Docker-образ
-
-- **Builder**: `golang:1.24-bookworm` — полная среда с GCC для сборки CGO (SQLite)
-- **Runtime**: `debian:trixie-slim` (Debian 13) — минимальный образ ~80 МБ
-- Итоговый образ содержит только бинарь, goose, task и миграции

@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-telegram/fsm"
 
+	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
@@ -12,11 +13,7 @@ import (
 )
 
 const (
-	MinLanguageCodeLen             = 2
-	StateIdle          fsm.StateID = ""
-	StateStart         fsm.StateID = "start"
-	StateChangeCity    fsm.StateID = "change_city"
-	StateFindClinic    fsm.StateID = "find_clinic"
+	MinLanguageCodeLen = 2
 )
 
 func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
@@ -35,7 +32,7 @@ func (s *StateMachine) CallbackStart(_ *fsm.FSM, args ...any) {
 		return
 	}
 
-	s.FSM.Transition(params.UserID, StateChangeCity, params)
+	s.FSM.Transition(params.UserID, constants.StateChangeCity, params)
 }
 
 func (s *StateMachine) CallbackChangeCity(_ *fsm.FSM, args ...any) {

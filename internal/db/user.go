@@ -18,7 +18,7 @@ type User struct {
 	State        string
 }
 
-func (d *Manager) GetUser(ctx context.Context, userID int64) (*User, error) {
+func (m *Manager) GetUser(ctx context.Context, userID int64) (*User, error) {
 	query := `
 		SELECT
 			id,
@@ -34,7 +34,7 @@ func (d *Manager) GetUser(ctx context.Context, userID int64) (*User, error) {
 		LIMIT 1
 	`
 
-	row := d.client.QueryRowContext(ctx, query, userID)
+	row := m.client.QueryRowContext(ctx, query, userID)
 
 	user := &User{}
 	err := row.Scan(
@@ -58,7 +58,7 @@ func (d *Manager) GetUser(ctx context.Context, userID int64) (*User, error) {
 	return user, nil
 }
 
-func (d *Manager) InsertOrUpdateUser(ctx context.Context, user *User) error {
+func (m *Manager) InsertOrUpdateUser(ctx context.Context, user *User) error {
 	if user == nil {
 		return errors.New("user is nil")
 	}
@@ -84,7 +84,7 @@ func (d *Manager) InsertOrUpdateUser(ctx context.Context, user *User) error {
 			state = excluded.state
 	`
 
-	_, err := d.client.ExecContext(
+	_, err := m.client.ExecContext(
 		ctx,
 		query,
 		user.ID,

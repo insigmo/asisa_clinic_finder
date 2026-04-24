@@ -16,17 +16,21 @@ import (
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
 )
 
-const baseURL = "https://www.asisa.es"
+const (
+	baseURL   = "https://www.asisa.es"
+	maxPlaces = 10
+)
 
 var postalCodePattern = regexp.MustCompile(`\d{5}`)
 
-func (h *HTTPManager) FetchClinics(ctx context.Context, provinceID int, direction string) (string, error) {
+func (h *HTTPManager) FetchClinics(ctx context.Context, provinceID int, direction string, page int) (string, error) {
 	fetchURL := baseURL + "/cuadro-medico/resultados-cuadro-medico"
 	q := urlpkg.Values{}
 	q.Set("networkId", "1")
 	q.Set("specialityType", "1")
 	q.Set("specialityName", strings.ToUpper(direction))
 	q.Set("provinceId", strconv.Itoa(provinceID))
+	q.Set("page", strconv.Itoa(page))
 
 	body, err := h.sendGet(ctx, fetchURL, q.Encode())
 	if err != nil {
@@ -60,7 +64,7 @@ func (h *HTTPManager) FetchPlaces(ctx context.Context, town string) ([]local_mod
 	if err != nil {
 		return nil, err
 	}
-	places := make([]local_models.Place, 0, 3)
+	places := make([]local_models.Place, 0, maxPlaces)
 	if err := json.Unmarshal(body, &places); err != nil {
 		return nil, fmt.Errorf("unmarshal places: %w", err)
 	}
@@ -78,7 +82,12 @@ func (h *HTTPManager) sendGet(ctx context.Context, rawURL, values string) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("do request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("failed to close body: ", err)
+		}
+	}(resp.Body)
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -95,7 +104,7 @@ func (h *HTTPManager) ParseHTML(data, direction string) ([]local_models.Clinic, 
 	if err != nil {
 		return nil, fmt.Errorf("parse html: %w", err)
 	}
-	clinics := make([]local_models.Clinic, 0, 10)
+	clinics := make([]local_models.Clinic, 0, maxPlaces)
 	doc.Find("div.cmp-medical-picture-result__info-container").Each(func(_ int, s *goquery.Selection) {
 		name := strings.TrimSpace(s.Find(".cmp-medical-picture-result__info-container__contact-data--name").Text())
 		address := strings.TrimSpace(s.Find(".cmp-medical-picture-result__info-container--address").Text())

@@ -31,6 +31,6 @@ func New(ctx context.Context) (*Manager, error) {
 	return &Manager{client: client}, nil
 }
 
-func (db *Manager) Close() error {
-	return db.client.Close()
+func (m *Manager) Close() error {
+	return m.client.Close()
 }

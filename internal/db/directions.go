@@ -15,12 +15,17 @@ const (
 
 var ErrMedicalDirectionNotFound = errors.New("medical direction not found")
 
-func (db *Manager) GetAllMedicalDirections(ctx context.Context) ([]string, error) {
-	rows, err := db.client.QueryContext(ctx, queryAllMedicalDirections)
+func (m *Manager) GetAllMedicalDirections(ctx context.Context) ([]string, error) {
+	rows, err := m.client.QueryContext(ctx, queryAllMedicalDirections)
 	if err != nil {
 		return nil, fmt.Errorf("query medical_direction failed: %w", err)
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			fmt.Println("failed to close rows: ", err)
+		}
+	}(rows)
 
 	var res []string
 	for rows.Next() {
@@ -36,11 +41,11 @@ func (db *Manager) GetAllMedicalDirections(ctx context.Context) ([]string, error
 	return res, nil
 }
 
-func (db *Manager) FindMedicalDirection(ctx context.Context, direction string) (string, error) {
+func (m *Manager) FindMedicalDirection(ctx context.Context, direction string) (string, error) {
 	direction = strings.ToUpper(direction)
 
 	var name string
-	err := db.client.
+	err := m.client.
 		QueryRowContext(ctx, queryFindMedicalDirection, direction).
 		Scan(&name)
 

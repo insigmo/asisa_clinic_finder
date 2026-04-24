@@ -31,3 +31,16 @@ func (l *Localizator) AskDirectionMessage() string {
 func (l *Localizator) UnknownMessage() string {
 	return l.mapper["/unknown_call"]
 }
+func (l *Localizator) ClinicsNotFound() string {
+	return l.mapper["/clinics_not_found"]
+}
+func (l *Localizator) Address() string {
+	return l.mapper["/address"]
+}
+func (l *Localizator) Phone() string {
+	return l.mapper["/phone"]
+}
+
+func (l *Localizator) Clinic() string {
+	return l.mapper["/clinic"]
+}

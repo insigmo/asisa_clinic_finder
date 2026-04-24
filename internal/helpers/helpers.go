@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/go-telegram/fsm"
 	"github.com/go-telegram/ui/keyboard/reply"
 
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
@@ -73,4 +74,18 @@ func FetchUser(params *local_models.BaseParams, dbManager *db.Manager) *db.User 
 		}
 	}
 	return user
+}
+
+func SetUserState(params *local_models.BaseParams, state fsm.StateID) {
+	dbManager := GetDbManager(params)
+	user := FetchUser(params, dbManager)
+	if user == nil {
+		params.Log.Error("User not found")
+		return
+	}
+
+	user.State = string(state)
+	if err := dbManager.InsertOrUpdateUser(params.Ctx, user); err != nil {
+		params.Log.Error(err.Error())
+	}
 }

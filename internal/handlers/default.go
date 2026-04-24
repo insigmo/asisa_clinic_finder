@@ -7,8 +7,8 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
+	"github.com/insigmo/asisa_clinic_finder/internal/constants"
 	"github.com/insigmo/asisa_clinic_finder/internal/db"
-	"github.com/insigmo/asisa_clinic_finder/internal/fsm_states"
 	"github.com/insigmo/asisa_clinic_finder/internal/helpers"
 	"github.com/insigmo/asisa_clinic_finder/internal/keyboards"
 	"github.com/insigmo/asisa_clinic_finder/internal/local_models"
@@ -19,10 +19,12 @@ func Default(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	params := local_models.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
+	if user == nil {
+		params.Log.Error("User not found")
+		return
+	}
 
-	text := strings.TrimSpace(update.Message.Text)
-
-	if action, ok := keyboards.ResolveMainMenuAction(user.LanguageCode, text); ok {
+	if action, ok := keyboards.ResolveMainMenuAction(params); ok {
 		switch action {
 		case keyboards.ActionFindClinic:
 			RequestClinicDirection(ctx, tgBot, update)
@@ -37,27 +39,14 @@ func Default(ctx context.Context, tgBot *bot.Bot, update *models.Update) {
 	}
 
 	switch user.State {
-	case string(fsm_states.StateFindClinic):
-		FindClinic(ctx, tgBot, update)
-		return
-
-	case string(fsm_states.StateChangeCity):
+	case string(constants.StateChangeCity):
 		handleCityInput(ctx, tgBot, update)
 		return
-	case string(fsm_states.StateStart):
+	case string(constants.StateStart):
 		handleStart(params, user)
 		return
 	}
-	localizer := localize_manager.New(user.LanguageCode)
-
-	if err := helpers.SendMessageWithReplyMarkup(
-		params,
-		localizer.UnknownMessage(),
-		keyboards.BuildMainMenu(params.TgBot, user.LanguageCode),
-	); err != nil {
-		params.Log.Error(err.Error())
-		return
-	}
+	FindClinic(ctx, tgBot, update)
 }
 
 func handleStart(params *local_models.BaseParams, user *db.User) {
@@ -77,6 +66,10 @@ func handleCityInput(ctx context.Context, tgBot *bot.Bot, update *models.Update)
 	params := local_models.NewBaseParams(ctx, tgBot, update)
 	dbManager := helpers.GetDbManager(params)
 	user := helpers.FetchUser(params, dbManager)
+	if user == nil {
+		params.Log.Error("User not found")
+		return
+	}
 
 	city := strings.TrimSpace(update.Message.Text)
 	if city == "" {
@@ -96,16 +89,12 @@ func handleCityInput(ctx context.Context, tgBot *bot.Bot, update *models.Update)
 			params.Log.Error(err.Error())
 		}
 
-		user.State = string(fsm_states.StateIdle)
-		if err = dbManager.InsertOrUpdateUser(ctx, user); err != nil {
-			params.Log.Error(err.Error())
-		}
-
+		helpers.SetUserState(params, constants.StateIdle)
 		return
 	}
 
 	user.City = city
-	user.State = string(fsm_states.StateIdle)
+	user.State = string(constants.StateIdle)
 
 	if err = dbManager.InsertOrUpdateUser(ctx, user); err != nil {
 		params.Log.Error(err.Error())

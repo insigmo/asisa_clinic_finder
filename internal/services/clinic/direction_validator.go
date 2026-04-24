@@ -23,11 +23,12 @@ func (d *DirectionValidator) TakeCity(ctx context.Context, userID int64) (string
 	return user.City, nil
 }
 
-func (d *DirectionValidator) ValidateDirection(ctx context.Context, direction string) error {
-	if _, err := d.dbManager.FindMedicalDirection(ctx, direction); err != nil {
-		return fmt.Errorf("direction not found: %w", err)
+func (d *DirectionValidator) ValidateDirection(ctx context.Context, direction string) (string, error) {
+	validName, err := d.dbManager.FindMedicalDirection(ctx, direction)
+	if err != nil {
+		return "", fmt.Errorf("direction not found: %w", err)
 	}
-	return nil
+	return validName, nil
 }
 
 func (d *DirectionValidator) FindSimilarDirections(ctx context.Context, direction string) ([]string, error) {

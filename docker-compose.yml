@@ -6,12 +6,9 @@ services:
       target: runtime
     container_name: asisa_clinic_finder_bot
     restart: unless-stopped
-
+    env_file:
+      - .env
     volumes:
       - ./db/:/app/db
     command: >
-      sh -c "task migrate && ./bot"
-
-volumes:
-  bot_data:
-    driver: local
+      sh -c "/app/build/entrypoint.sh"
